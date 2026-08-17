@@ -1,0 +1,23 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+python-dotenv==1.0.1
+
+# Gemini SDK
+google-generativeai==0.8.3
+
+# Vector store (pre-built Windows wheels — no C++ build tools needed)
+faiss-cpu>=1.9.0
+numpy>=1.26.0
+
+# PDF processing
+pdfplumber==0.11.4
+pdf2image==1.17.0
+Pillow==11.0.0
+
+# OpenAI-compatible SDK (for v2 SLM endpoint)
+openai==1.57.0
+
+# Utilities
+httpx==0.27.2
+aiofiles==24.1.0
