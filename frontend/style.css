@@ -55,9 +55,9 @@ button  { cursor: pointer; border: none; background: none; font-family: inherit;
 input, textarea, select { font-family: inherit; }
 a { text-decoration: none; }
 
-/* ── Topbar ─────────────────────────────────────────────────── */
+/* ── Topbar ─────────────────────────────────────────────── */
 #topbar {
-  height: var(--topbar-h);
+  height: 56px;
   border-bottom: 1px solid var(--border-color);
   padding: 0 24px;
   display: flex;
@@ -85,33 +85,84 @@ a { text-decoration: none; }
   object-fit: contain;
 }
 
-.logo-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.header-icon {
-  color: var(--gray-700);
+/* ── Model info banner (top of main content area) ───────── */
+#model-banner {
+  padding: 16px 24px 0;
   flex-shrink: 0;
 }
 
-#model-select {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gray-900);
-  background: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 2px;
-  transition: color var(--transition);
+.model-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f3f0ff;
+  border: 1px solid #e5deff;
+  border-radius: 10px;
+  padding: 10px 16px 10px 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 }
-#model-select:hover { color: var(--gray-500); }
 
-.chevron-icon { color: var(--gray-300); flex-shrink: 0; }
+.model-banner-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--purple-600);
+}
+.model-banner-icon svg { display: block; }
+
+.model-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-banner-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--purple-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.model-banner-title span {
+  font-weight: 700;
+}
+
+.model-banner-sub {
+  font-size: 0.6875rem;
+  color: var(--gray-500);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-banner-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--purple-600);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color var(--transition), background var(--transition);
+  white-space: nowrap;
+}
+.model-banner-link:hover {
+  color: var(--purple-500);
+  background: rgba(124,58,237,0.06);
+}
+.model-banner-link svg { display: block; }
+
+@media (max-width: 700px) {
+  #model-banner { display: none; }
+}
 
 .header-actions {
   display: flex;
@@ -580,6 +631,50 @@ a { text-decoration: none; }
   color: var(--gray-400);
   margin-top: 2px;
 }
+
+/* ── vLLM status badge ───────────────────────────────────────── */
+.modal-divider-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vllm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.vllm-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.vllm-badge--checking {
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+.vllm-badge--checking::before { background: var(--gray-400); }
+
+.vllm-badge--online {
+  background: #dcfce7;
+  color: #15803d;
+}
+.vllm-badge--online::before { background: #16a34a; }
+
+.vllm-badge--offline {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.vllm-badge--offline::before { background: #dc2626; }
 
 /* ── Settings Modal ──────────────────────────────────────────── */
 #modal-overlay {

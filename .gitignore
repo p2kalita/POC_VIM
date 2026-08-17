@@ -215,8 +215,9 @@ marimo/_lsp/
 __marimo__/
 chroma_db
 uploads
-start.bat
 implementation_plan.md
+vllm_+_Qwen_2_5_3B_Ngrok_tunnel_test_bench.ipynb
+Sample Invoices
 
 
 # Streamlit

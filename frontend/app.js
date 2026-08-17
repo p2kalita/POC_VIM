@@ -18,7 +18,6 @@ let activeDocId = null;
 
 // ── DOM refs ───────────────────────────────────────────────────
 const topbar          = document.getElementById('topbar');
-const modelSelect     = document.getElementById('model-select');
 const newThreadBtn    = document.getElementById('new-thread-btn');
 const welcomeSection  = document.getElementById('welcome');
 const messagesDiv     = document.getElementById('messages');
@@ -42,6 +41,10 @@ const modelInput      = document.getElementById('model-input');
 const toastContainer  = document.getElementById('toast-container');
 const uploadProgress  = document.getElementById('upload-progress');
 
+const modelNameDisplay = document.getElementById('model-name-display');
+const modelLearnMore   = document.getElementById('model-learn-more');
+const vllmBadge        = document.getElementById('vllm-status-badge');
+
 // ── Init ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
@@ -51,6 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupModal();
   setupExampleCards();
   setupNewThread();
+  // Probe backend on load to show active model in header
+  probeBackend();
 });
 
 // ── Greeting ───────────────────────────────────────────────────
@@ -63,14 +68,9 @@ function setGreeting() {
 
 // ── Settings ───────────────────────────────────────────────────
 function loadSettings() {
-  apiUrlInput.value   = localStorage.getItem('api_url')      || API_BASE;
-  endpointInput.value = localStorage.getItem('llm_endpoint') || '';
-  modelInput.value    = localStorage.getItem('model_name')   || 'gemini-2.0-flash';
-  // Sync header select
-  const savedModel = localStorage.getItem('model_name') || 'gemini-2.0-flash';
-  Array.from(modelSelect.options).forEach(o => {
-    if (o.value === savedModel) o.selected = true;
-  });
+  if (apiUrlInput)   apiUrlInput.value   = localStorage.getItem('api_url')      || API_BASE;
+  if (endpointInput) endpointInput.value = localStorage.getItem('llm_endpoint') || '';
+  if (modelInput)    modelInput.value    = localStorage.getItem('model_name')   || 'Qwen/Qwen2.5-3B-Instruct';
 }
 
 function getApiBase() {
@@ -91,7 +91,7 @@ saveSettings.addEventListener('click', () => {
 // ── Modal ──────────────────────────────────────────────────────
 function setupModal() {
   [settingsBtnHdr, settingsBtnCtrl].forEach(btn => {
-    btn?.addEventListener('click', openModal);
+    btn?.addEventListener('click', () => { openModal(); probeVllmStatus(); });
   });
   modalClose.addEventListener('click', closeModal);
   modalOverlay.addEventListener('click', e => {
@@ -103,6 +103,47 @@ function setupModal() {
 }
 function openModal()  { modalOverlay.classList.add('open'); }
 function closeModal() { modalOverlay.classList.remove('open'); }
+
+// ── Backend probe (llm-info) ────────────────────────────────────
+async function probeBackend() {
+  try {
+    const res  = await fetch(`${getApiBase()}/llm-info`);
+    if (!res.ok) return;
+    const info = await res.json();
+    // Update the header banner model name
+    if (info.model && modelNameDisplay) {
+      // Strip org prefix for display: "Qwen/Qwen2.5-3B-Instruct" → "Qwen2.5-3B-Instruct"
+      const shortName = info.model.includes('/') ? info.model.split('/').pop() : info.model;
+      modelNameDisplay.textContent = shortName;
+    }
+  } catch (_) { /* backend not yet running, ignore */ }
+}
+
+async function probeVllmStatus() {
+  if (!vllmBadge) return;
+  vllmBadge.className = 'vllm-badge vllm-badge--checking';
+  vllmBadge.textContent = 'checking…';
+  try {
+    const res  = await fetch(`${getApiBase()}/llm-info`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('non-ok');
+    const info = await res.json();
+    if (info.backend === 'vllm') {
+      vllmBadge.className = 'vllm-badge vllm-badge--online';
+      vllmBadge.textContent = `online · ${info.model}`;
+      // Pre-fill endpoint & model inputs
+      if (endpointInput && info.base_url) endpointInput.value = info.base_url;
+      if (modelInput    && info.model)    modelInput.value    = info.model;
+    } else {
+      vllmBadge.className = 'vllm-badge vllm-badge--offline';
+      vllmBadge.textContent = `gemini fallback`;
+    }
+  } catch (_) {
+    if (vllmBadge) {
+      vllmBadge.className = 'vllm-badge vllm-badge--offline';
+      vllmBadge.textContent = 'offline';
+    }
+  }
+}
 
 // ── New Thread ─────────────────────────────────────────────────
 function setupNewThread() {
@@ -203,10 +244,11 @@ async function handleSubmit() {
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer    = '';
+    let ssesDone  = false;
 
     replaceThinkingWithCursor(assistantBubble);
 
-    while (true) {
+    while (!ssesDone) {
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -216,12 +258,12 @@ async function handleSubmit() {
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
-        const payload = line.slice(6);
-        if (payload === '[DONE]') break;
-        if (payload.startsWith('[ERROR]')) {
-          throw new Error(payload.slice(8));
-        }
-        const token = payload.replace(/\\n/g, '\n');
+        const payload        = line.slice(6);        // raw — preserves leading spaces in tokens
+        const payloadTrimmed = payload.trim();        // for control-message checks only
+        if (payloadTrimmed === '[DONE]')              { ssesDone = true; break; }
+        if (payloadTrimmed.startsWith('[ERROR]'))     { throw new Error(payloadTrimmed.slice(8)); }
+        if (!payloadTrimmed)                          continue;  // skip blank lines
+        const token = payload.replace(/\\n/g, '\n'); // unescape newlines, keep spaces
         fullText += token;
         updateStreamBubble(assistantBubble, fullText);
       }
