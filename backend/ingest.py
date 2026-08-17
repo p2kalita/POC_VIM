@@ -92,9 +92,12 @@ def _cosine_normalize(vecs: np.ndarray) -> np.ndarray:
 # ── Gemini helpers ────────────────────────────────────────────────────────────
 
 def _gemini_vision_ocr(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
-    """Extract structured text from an invoice image using Gemini Vision."""
-    import google.generativeai as genai          # type: ignore
-    import google.generativeai.types as gtypes   # type: ignore
+    """Extract structured text from an invoice image using Gemini Vision.
+
+    Uses the BlobDict format (inline dict) which is compatible with
+    google-generativeai 0.8.x (gtypes.BlobPart was removed in this branch).
+    """
+    import google.generativeai as genai  # type: ignore
 
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(GEMINI_VISION_MODEL)
@@ -108,7 +111,9 @@ def _gemini_vision_ocr(image_bytes: bytes, mime_type: str = "image/jpeg") -> str
         "Output plain text. Do NOT add commentary."
     )
 
-    image_part = gtypes.BlobPart(data=image_bytes, mime_type=mime_type)
+    # BlobDict format — works with google-generativeai 0.8.x
+    # gtypes.BlobPart was removed; pass image as an inline dict instead.
+    image_part = {"mime_type": mime_type, "data": image_bytes}
     response = model.generate_content([prompt, image_part])
     return response.text or ""
 

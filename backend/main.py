@@ -25,7 +25,7 @@ load_dotenv()
 
 from ingest import ingest_invoice, delete_invoice, list_invoices
 from retrieval import retrieve_context
-from llm import chat_stream
+from llm import chat_stream, get_llm_info
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -45,8 +45,8 @@ SUPPORTED_EXTENSIONS = {
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Invoice RAG Chatbot API",
-    description="RAG-powered invoice Q&A using Gemini (v1) or custom SLM (v2)",
-    version="1.0.0",
+    description="RAG-powered invoice Q&A using Gemini (v1) or vLLM / OpenAI-compatible endpoint (v2)",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -66,14 +66,28 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
-    filter_doc_id: Optional[str] = None  # restrict context to one invoice
+    filter_doc_id: Optional[str] = None   # restrict context to one invoice
+    writing_style: Optional[str] = None   # passed through from frontend controls
+    citations: Optional[bool] = False      # whether to request citation formatting
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "2.0.0", "llm": get_llm_info()}
+
+
+@app.get("/llm-info")
+async def llm_info():
+    """Return the active LLM backend configuration (safe to expose — no secrets)."""
+    info = get_llm_info()
+    # Mask the full URL but show the host for diagnostics
+    if "base_url" in info:
+        from urllib.parse import urlparse
+        parsed = urlparse(info["base_url"])
+        info["host"] = parsed.netloc
+    return info
 
 
 @app.post("/upload")
